@@ -54,15 +54,17 @@ class PlaneSegment {
         void restoreCloudFromZeroMean(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud); 
         void viewCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
 
-        void getPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud); 
+        void getPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
+        void printPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
 
         Eigen::Vector3f getNormal(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud); 
         Eigen::Vector3f getNormal(const Eigen::Vector4f plane_parameters);
         Eigen::Vector3f getNormal(const Eigen::MatrixXf covariance);
         Eigen::Vector4f getPlaneParametersRANSAC(
-        const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, int max_iterations = 3, float distance_threshold = 1.0);
+        const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, int max_iterations = 100, float distance_threshold = 0.002);
  
         float getPlaneError(Eigen::Vector4f plane, const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, std::vector<int> points_to_fit);
+        float getPlaneError(Eigen::Vector4f plane, const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
 
         float pointToPlaneDistance(Eigen::Vector4f plane, Eigen::Vector3f point, Eigen::Vector3f point_on_plane);
         float pointToPlaneDistance(Eigen::Vector4f plane, pcl::PointXYZ point_pcl, pcl::PointXYZ point_on_plane);
@@ -188,6 +190,17 @@ Eigen::Vector3f PlaneSegment::getCloudMean(const pcl::PointCloud<pcl::PointXYZ>:
  //  std::cout << "Calculated Centroid :    " << this->cloud_mean[0]
  //             << " "    << this->cloud_mean[1]
  //             << " "    << this->cloud_mean[2] << std::endl;
+ pcl::PointXYZ minPt, maxPt;
+  pcl::getMinMax3D (*cloud, minPt, maxPt);
+  //std::cout << "Max x: " << maxPt.x << std::endl;
+  //std::cout << "Max y: " << maxPt.y << std::endl;
+  //std::cout << "Max z: " << maxPt.z << std::endl;
+  //std::cout << "Min x: " << minPt.x << std::endl;
+  //std::cout << "Min y: " << minPt.y << std::endl;
+  //std::cout << "Min z: " << minPt.z << std::endl;
+  std::cout << "X range: " << maxPt.x - minPt.x <<" [ "<<minPt.x<<", "<<maxPt.x<<" ]\n";
+  std::cout << "Y range: " << maxPt.y - minPt.y <<" [ "<<minPt.y<<", "<<maxPt.y<<" ]\n";
+  std::cout << "Z range: " << maxPt.z - minPt.z <<" [ "<<minPt.z<<", "<<maxPt.z<<" ]\n";
     Eigen::Vector4f centroid;
     if (! pcl::compute3DCentroid(*cloud, centroid) ) {
       std::cout<<"invalid centroid";
@@ -206,11 +219,25 @@ Eigen::Vector3f PlaneSegment::getCloudMean(const pcl::PointCloud<pcl::PointXYZ>:
 }
 
 void PlaneSegment::makeCloudZeroMean(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
+  this->getCloudMean(cloud);
   for (size_t i = 0; i < cloud->points.size (); ++i) {
     cloud->points[i].x -= this->cloud_mean[0];
     cloud->points[i].y -= this->cloud_mean[1];
     cloud->points[i].z -= this->cloud_mean[2];
   }
+  //float temp;
+  //for (size_t i = 0; i < cloud->points.size (); ++i) {
+  //  temp = cloud->points[i].x;
+  //  cloud->points[i].x = cloud->points[i].z;
+  //  cloud->points[i].z = temp;
+  //}
+  //for (size_t i = 0; i < cloud->points.size (); ++i) {
+  //  temp = cloud->points[i].x;
+  //  cloud->points[i].x = cloud->points[i].y;
+  //  cloud->points[i].y = cloud->points[i].z;
+  //  cloud->points[i].z = temp;
+  //}
+
 }
 void PlaneSegment::restoreCloudFromZeroMean(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
   for (size_t i = 0; i < cloud->points.size (); ++i) {
@@ -276,19 +303,19 @@ Eigen::Vector4f PlaneSegment::getPlaneProposalLeastSquares(const pcl::PointCloud
     centroid[2] += cloud->points[i].z;  
     counter++;
   }
-  std::cout<<"\n A : \n\n"<<A;
-  std::cout<<"\n B : \n\n"<<B;
+  //std::cout<<"\n A : \n\n"<<A;
+  //std::cout<<"\n B : \n\n"<<B;
 
   //Eigen::Vector3f plane_abc = A.colPivHouseholderQr().solve(B);
   Eigen::Vector3f plane_abc = A.completeOrthogonalDecomposition().solve(B);
-  std::cout<<"\n QR_pinv(A)*B : \n\n"<<plane_abc;
+  //std::cout<<"\n QR_pinv(A)*B : \n\n"<<plane_abc;
   plane_abc = plane_abc.normalized();
-  std::cout<<"\n Normal from PInv : \n\n"<<plane_abc;
+  //std::cout<<"\n Normal from PInv : \n\n"<<plane_abc;
   plane_in_world[0] = plane_abc[0];
   plane_in_world[1] = plane_abc[1];
   plane_in_world[2] = plane_abc[2];
   centroid /= points_to_fit.size();
-  std::cout<<"\n centroid : \n\n"<<centroid;
+  std::cout<<"\n centroid : [ "<<centroid[0]<<", "<<centroid[1]<<", "<<centroid[2]<<"] ";
   plane_in_world[3] = plane_abc.dot(centroid);
     
   return plane_in_world; 
@@ -302,59 +329,119 @@ float PlaneSegment::pointToPlaneDistance(Eigen::Vector4f plane, pcl::PointXYZ po
   Eigen::Vector3f point_on_plane(point_on_plane_pcl.x, point_on_plane_pcl.y, point_on_plane_pcl.z);
   return this->pointToPlaneDistance(plane, point, point_on_plane);
 }
-
+float PlaneSegment::getPlaneError(Eigen::Vector4f plane, const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
+  float total_error = 0.0;
+  int random_point_reference = this->getRandomPointIndices(cloud->points.size(), 1)[0];
+  for (auto pt : cloud->points) {
+    total_error += this->pointToPlaneDistance( plane, pt, cloud->points[random_point_reference] );
+  }
+  return std::abs(total_error);
+}
 float PlaneSegment::getPlaneError(Eigen::Vector4f plane, const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, std::vector<int> points_to_fit) {
   float total_error = 0.0;
   int random_point_reference = this->getRandomPointIndices(cloud->points.size(), 1)[0];
   for (auto index : points_to_fit) {
     total_error += this->pointToPlaneDistance( plane, cloud->points[index], cloud->points[random_point_reference] );
   }
-  return total_error;
+  return std::abs(total_error);
 }
 Eigen::Vector4f PlaneSegment::getPlaneParametersRANSAC(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, int max_iterations, float distance_threshold) {
-  int iteration = 0, sample_point_size = min(int(cloud->points.size()), 12), sample_size_threshold = min(int(cloud->points.size()), 40);
+  int iteration = 0, sample_point_size = min(int(cloud->points.size()), 3), sample_size_threshold = min(int(cloud->points.size()), 10);
 
   Eigen::Vector4f best_plane_fit, plane_proposal;
-  float best_error = 999999.9; 
+  float best_error = 99.9, current_error;
+  int max_inliers = 0;
   std::vector<int> proposed_inliers, also_inliers;
   while (iteration < max_iterations)  {
+    std::cout<<"\n Iteration "<<iteration;
     proposed_inliers.clear();
     proposed_inliers = this->getRandomPointIndices(cloud->points.size(), sample_point_size);
+    std::cout<<" -- "<<proposed_inliers.size()<<" proposed inliers -- ";
 
     plane_proposal = this->getPlaneProposalLeastSquares(cloud, proposed_inliers);
-    std::cout<<"\n\n Proposed Plane : "<<plane_proposal<<" with error: "<<this->getPlaneError( plane_proposal, cloud, proposed_inliers )<<std::endl;
+    current_error = this->getPlaneError( plane_proposal, cloud, proposed_inliers);
+    std::cout<<"\n\n Proposed Plane : [ "<<plane_proposal[0]<<", "<<plane_proposal[1]
+            <<", "<<plane_proposal[2]<<", "<<plane_proposal[3]<<"]  with error: "
+            <<current_error<<std::endl;
+    //if (current_error < 0.1)
+    //  return plane_proposal;
+
     also_inliers.clear();
     for (int i = 0; i < cloud->points.size(); i++) {
       if (find(proposed_inliers.begin(), proposed_inliers.end(), i) == proposed_inliers.end()) {
-        if (this->getPlaneError(plane_proposal, cloud, std::vector<int>(i)) < distance_threshold)
+        //if (this->getPlaneError(plane_proposal, cloud, std::vector<int>(i)) < distance_threshold)
+        if (this->pointToPlaneDistance(plane_proposal, cloud->points[i], cloud->points[proposed_inliers[0]]) < distance_threshold) {
           also_inliers.push_back(i);
+        }
       }
     }
-    if (iteration == 0) {
-      best_plane_fit = plane_proposal;
-      std::cout<<"\n\n Best Plane yet : "<<plane_proposal<<std::endl;
-      best_error = this->getPlaneError( plane_proposal, cloud, proposed_inliers );
-    }
+    //if (current_error < best_error) {
+    //  best_plane_fit = plane_proposal;
+    //  std::cout<<"\n\n Best Plane yet: [ "<<plane_proposal[0]<<", "<<plane_proposal[1]
+    //        <<", "<<plane_proposal[2]<<", "<<plane_proposal[3]<<"] with error: "
+    //      <<current_error<<std::endl;
+    //  best_error = current_error;
+    //}
+    std::cout<<" -- "<<also_inliers.size()<<" inliers added -- ";
+
     if (also_inliers.size() > sample_size_threshold) {
       // fit plane to all inliers
       proposed_inliers.insert(proposed_inliers.end(), also_inliers.begin(), also_inliers.end());
+      std::cout<<" -- "<<proposed_inliers.size()<<" total inliers -- ";
       // better plane proposal
       plane_proposal =  this->getPlaneProposalLeastSquares( cloud, proposed_inliers );
-      std::cout<<"\n\n Improved Plane : "<<plane_proposal<<std::endl;
-      float error = this->getPlaneError( plane_proposal, cloud, proposed_inliers ); 
-      if (error < best_error) {
+      current_error = this->getPlaneError( plane_proposal, cloud, proposed_inliers);
+
+      //if (current_error < 0.1)
+    //  return plane_proposal;
+      //if (current_error < best_error) {
+      if (proposed_inliers.size() > max_inliers) {
+        max_inliers = proposed_inliers.size();
         best_plane_fit = plane_proposal;
-        std::cout<<"\n\n Best Plane yet : "<<plane_proposal<<std::endl;
-        best_error = error;
+        std::cout<<"\n\n Improved Best Plane: [ "<<plane_proposal[0]<<", "<<plane_proposal[1]
+              <<", "<<plane_proposal[2]<<", "<<plane_proposal[3]<<"] with error: "
+            <<current_error<<std::endl;
+        best_error = current_error;
+      }
+      else {
+        std::cout<<"\n\n Improved Plane : [ "<<plane_proposal[0]<<", "<<plane_proposal[1]
+              <<", "<<plane_proposal[2]<<", "<<plane_proposal[3]<<"] with error: "
+            <<current_error<<std::endl;
       }
     }
     iteration++;
   }
+  std::cout<<"\n\n Output Plane : [ "<<best_plane_fit[0]<<", "<<best_plane_fit[1]
+            <<", "<<best_plane_fit[2]<<", "<<best_plane_fit[3]<<"] with error: "
+          <<this->getPlaneError( best_plane_fit, cloud, proposed_inliers)<< " on inliers : "<<proposed_inliers.size();
   return best_plane_fit; 
 }
+
+void PlaneSegment::printPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
+  std::cout<<"\n--------\n Plane visualized : [ "<<this->plane_parameters[0]<<", "<<this->plane_parameters[1]
+              <<", "<<this->plane_parameters[2]<<", "<<this->plane_parameters[3]<<"] with error : "<<this->getPlaneError( this->plane_parameters, cloud);
+}
 void PlaneSegment::getPlane(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) { 
+
+  //pcl::ModelCoefficients::Ptr coefficients (new pcl::ModelCoefficients);
+  //pcl::PointIndices::Ptr inliers (new pcl::PointIndices);
+  //// Create the segmentation object
+  //pcl::SACSegmentation<pcl::PointXYZ> seg;
+  //// Mandatory
+  //seg.setModelType (pcl::SACMODEL_PLANE);
+  //seg.setMethodType (pcl::SAC_RANSAC);
+  //seg.setDistanceThreshold (0.01);
+  //seg.setInputCloud (cloud);
+  //seg.segment (*inliers, *coefficients);
+  //this->plane_parameters[0] = coefficients->values[0];
+  //this->plane_parameters[1] = coefficients->values[1];
+  //this->plane_parameters[2] = coefficients->values[2];
+  //this->plane_parameters[3] = coefficients->values[3];
+
   this->plane_parameters = this->getPlaneParametersRANSAC(cloud);
   this->normal = this->getNormal(this->plane_parameters);
+  std::cout<<"\n--------\n Plane visualized : [ "<<this->plane_parameters[0]<<", "<<this->plane_parameters[1]
+              <<", "<<this->plane_parameters[2]<<", "<<this->plane_parameters[3]<<"] with error : "<<this->getPlaneError( this->plane_parameters, cloud);
   //this->det = std::vector<float>{0.0, 0.0, 0.0};
   //this->det[0] = this->yy*this->zz - this->yz*this->yz;
   //this->det[1] = this->xx*this->zz - this->xz*this->xz;
@@ -404,6 +491,11 @@ Eigen::Vector3f PlaneSegment::getNormal(const pcl::PointCloud<pcl::PointXYZ>::Pt
 
 Eigen::Vector3f PlaneSegment::getNormal(const Eigen::Vector4f plane_parameters) {
   Eigen::Vector3f normal(plane_parameters[0], plane_parameters[1], plane_parameters[2]); 
+  //std::cout<<" \n For Plane, a, b, c, d :" << plane_parameters[0] <<" "
+  //                                        << plane_parameters[1] <<" "
+  //                                        << plane_parameters[2] <<" "
+  //                                        << plane_parameters[3] <<" \n\n";
+
   return normal.normalized();
 }
 
@@ -446,20 +538,20 @@ void PlaneSegment::viewCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
   pcl::ModelCoefficients plane_coeff;
   
   plane_coeff.values.resize (4);    // We need 4 values
-  plane_coeff.values[0] = this->plane_parameters[0];
-  plane_coeff.values[1] = this->plane_parameters[1];
-  plane_coeff.values[2] = this->plane_parameters[2];
-  plane_coeff.values[3] = this->plane_parameters[3];
- 
+  plane_coeff.values[0] = this->plane_parameters.x();
+  plane_coeff.values[1] = this->plane_parameters.y();
+  plane_coeff.values[2] = this->plane_parameters.z();
+  plane_coeff.values[3] = this->plane_parameters.w();
+
   pcl::ModelCoefficients camera_coeff;
  
   camera_coeff.values.resize (7);    // We need 7 values
-  camera_coeff.values[0] = this->cloud_mean[0] + 1.0*this->normal[0]; // x-origin
-  camera_coeff.values[1] = this->cloud_mean[1] + 1.0*this->normal[1]; // y-origin
-  camera_coeff.values[2] = this->cloud_mean[2] + 1.0*this->normal[2]; // z-origin
-  camera_coeff.values[3] = -0.5*this->normal[0];//this->cloud_mean[0]; // relative x-end
-  camera_coeff.values[4] = -0.5*this->normal[1];//this->cloud_mean[1]; // relative y-end
-  camera_coeff.values[5] = -0.5*this->normal[2];//this->cloud_mean[2]; // relative z-end
+  camera_coeff.values[0] = -1.0*this->normal[0];//this->cloud_mean[0] ;//+ 1.0*this->normal[0]; // x-origin
+  camera_coeff.values[1] = -1.0*this->normal[1];//this->cloud_mean[1] ;//+ 1.0*this->normal[1]; // y-origin
+  camera_coeff.values[2] = -1.0*this->normal[2];//this->cloud_mean[2] ;//+ 1.0*this->normal[2]; // z-origin
+  camera_coeff.values[3] = 0.5*this->normal[0];//this->cloud_mean[0]; // relative x-end
+  camera_coeff.values[4] = 0.5*this->normal[1];//this->cloud_mean[1]; // relative y-end
+  camera_coeff.values[5] = 0.5*this->normal[2];//this->cloud_mean[2]; // relative z-end
   camera_coeff.values[6] = 5.0; // radius
 
   std::cout<<"\n Displaying Plane + Cone\n";
@@ -473,7 +565,7 @@ void PlaneSegment::viewCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
   std::cout<<"\n Normal : "<<this->normal[0]<<", "<<this->normal[1]<<", "<<this->normal[2]<<"\n ";
   // Add vector on plane
   Eigen::Vector3f vector_on_plane = Eigen::Vector3f(0, 0, 1).cross(this->normal);
-  std::cout<<"\n vector_on_plane : "<<vector_on_plane[0]<<", "<<vector_on_plane[1]<<", "<<vector_on_plane[2]<<"\n ";
+  std::cout<<"\n vector_on_plane : "<<vector_on_plane[0]<<", "<<vector_on_plane[1]<<", "<<vector_on_plane[2]<<"\n "; // coplanar vector
   //camera_coeff.values[0] = this->cloud_mean[0]; // x-origin
   //camera_coeff.values[1] = this->cloud_mean[1]; // y-origin
   //camera_coeff.values[2] = this->cloud_mean[2]; // z-origin
@@ -492,16 +584,14 @@ void PlaneSegment::viewCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
   m  = Eigen::Translation3f(this->cloud_mean) * aa;
 
   Eigen::Quaternion<float> q;  q = aa;
- 
-
 
   Eigen::AngleAxis<float> aa_yaw_on_plane( yaw_vector_on_plane,  Eigen::Vector3f(0, 0, 1)); // yaw for vector on plane
   m *= aa_yaw_on_plane;
 
   q = aa*aa_yaw_on_plane;
-  this->viewer->addCoordinateSystem (1.0, m, "second");
+  //this->viewer->addCoordinateSystem (1.0, m, "second");
 
-  this->viewer->addCube(this->cloud_mean + 1.0*this->normal , q, 2*0.16, 2*0.1, 0.02, "camera_view");
+  this->viewer->addCube(-1.0*this->normal , q, 2*0.16, 2*0.1, 0.02, "camera_view");
 //pcl::visualization::createCube (const Eigen::Vector3f &translation, const Eigen::Quaternionf &rotation,
 //                                double width, double height, double depth)
   //--------------------

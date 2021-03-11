@@ -37,10 +37,11 @@ int main (int argc, char** argv)
 
   PlaneSegment plane;
   //plane.getCloudMean(cloud);
-  //plane.makeCloudZeroMean(cloud);
+  plane.makeCloudZeroMean(cloud);
   plane.getPlane(cloud);
   //plane.restoreCloudFromZeroMean(cloud);
   
+  //plane.printPlane(cloud);
   plane.viewCloud(cloud);
   //plane.getClusters(cloud);
 
