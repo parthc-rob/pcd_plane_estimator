@@ -61,7 +61,7 @@ class PlaneSegment {
         Eigen::Vector3f getNormal(const Eigen::Vector4f plane_parameters);
         Eigen::Vector3f getNormal(const Eigen::MatrixXf covariance);
         Eigen::Vector4f getPlaneParametersRANSAC(
-        const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, int max_iterations = 100, float distance_threshold = 0.002);
+        const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, int max_iterations = 20, float distance_threshold = 0.002);
  
         float getPlaneError(Eigen::Vector4f plane, const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, std::vector<int> points_to_fit);
         float getPlaneError(Eigen::Vector4f plane, const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud);
@@ -316,7 +316,8 @@ Eigen::Vector4f PlaneSegment::getPlaneProposalLeastSquares(const pcl::PointCloud
   plane_in_world[2] = plane_abc[2];
   centroid /= points_to_fit.size();
   std::cout<<"\n centroid : [ "<<centroid[0]<<", "<<centroid[1]<<", "<<centroid[2]<<"] ";
-  plane_in_world[3] = plane_abc.dot(centroid);
+  plane_in_world[3] = plane_abc[0]*centroid[0] + plane_abc[1]*centroid[1] + plane_abc[2]*centroid[2];
+  //plane_in_world[3] = plane_abc.dot(centroid);
     
   return plane_in_world; 
 }

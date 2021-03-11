@@ -25,7 +25,7 @@ int main (int argc, char** argv)
 
   if (pcl::io::loadPCDFile<pcl::PointXYZ> (file, *cloud) == -1) //* load the file
   {
-    PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
+    PCL_ERROR ("Usage : ./plane_extractor <pcd-filename> \n");//("Couldn't read file test_pcd.pcd \n");
     return (-1);
   }
   std::cout << "Loaded "
@@ -70,6 +70,7 @@ void getClusters(pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, std::string filenam
     // Segment the largest planar component from the remaining cloud
     seg.setInputCloud (cloud_filtered);
     seg.segment (*inliers, *coefficients);
+    std::cout<<"Coefficients : "<<*coefficients;
     if (inliers->indices.size () == 0)
     {
       std::cout << "Could not estimate a planar model for the given dataset." << std::endl;
