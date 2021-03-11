@@ -336,7 +336,7 @@ float PlaneSegment::getPlaneError(Eigen::Vector4f plane, const pcl::PointCloud<p
   for (auto pt : cloud->points) {
     total_error += this->pointToPlaneDistance( plane, pt, cloud->points[random_point_reference] );
   }
-  return std::abs(total_error);
+  return std::abs(total_error/cloud->points.size());
 }
 float PlaneSegment::getPlaneError(Eigen::Vector4f plane, const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, std::vector<int> points_to_fit) {
   float total_error = 0.0;
@@ -344,10 +344,10 @@ float PlaneSegment::getPlaneError(Eigen::Vector4f plane, const pcl::PointCloud<p
   for (auto index : points_to_fit) {
     total_error += this->pointToPlaneDistance( plane, cloud->points[index], cloud->points[random_point_reference] );
   }
-  return std::abs(total_error);
+  return std::abs(total_error/points_to_fit.size());
 }
 Eigen::Vector4f PlaneSegment::getPlaneParametersRANSAC(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud, int max_iterations, float distance_threshold) {
-  int iteration = 0, sample_point_size = min(int(cloud->points.size()), 3), sample_size_threshold = min(int(cloud->points.size()), 10);
+  int iteration = 0, sample_point_size = min(int(cloud->points.size()), 10), sample_size_threshold = min(int(cloud->points.size()), 20);
 
   Eigen::Vector4f best_plane_fit, plane_proposal;
   float best_error = 99.9, current_error;
@@ -396,13 +396,16 @@ Eigen::Vector4f PlaneSegment::getPlaneParametersRANSAC(const pcl::PointCloud<pcl
       //if (current_error < 0.1)
     //  return plane_proposal;
       //if (current_error < best_error) {
-      if (proposed_inliers.size() > max_inliers) {
-        max_inliers = proposed_inliers.size();
-        best_plane_fit = plane_proposal;
-        std::cout<<"\n\n Improved Best Plane: [ "<<plane_proposal[0]<<", "<<plane_proposal[1]
-              <<", "<<plane_proposal[2]<<", "<<plane_proposal[3]<<"] with error: "
-            <<current_error<<std::endl;
-        best_error = current_error;
+      //if (proposed_inliers.size() > max_inliers && ! isnan(current_error)) {
+      if (! isnan(current_error)) {
+        if (current_error < best_error ) {
+          max_inliers = proposed_inliers.size();
+          best_plane_fit = plane_proposal;
+          std::cout<<"\n\n Improved Best Plane: [ "<<plane_proposal[0]<<", "<<plane_proposal[1]
+                <<", "<<plane_proposal[2]<<", "<<plane_proposal[3]<<"] with error: "
+              <<current_error<<std::endl;
+          best_error = current_error;
+        }
       }
       else {
         std::cout<<"\n\n Improved Plane : [ "<<plane_proposal[0]<<", "<<plane_proposal[1]
