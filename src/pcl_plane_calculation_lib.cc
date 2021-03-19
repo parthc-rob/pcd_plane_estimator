@@ -289,6 +289,7 @@ Eigen::Vector4f PlaneSegment::getPlaneProposalLeastSquares(const pcl::PointCloud
   //for ( auto idx : points_to_fit )
   //  std::cout<<idx;
   //std::cout<<std::endl;
+  Eigen::Vector3f current_point;
 
   int counter = 0;
   for ( int i : points_to_fit) {
@@ -296,8 +297,9 @@ Eigen::Vector4f PlaneSegment::getPlaneProposalLeastSquares(const pcl::PointCloud
     //plane_cloud->insert( plane_cloud->end(), cloud->points[i] );
     A(counter, 0) = cloud->points[i].x;
     A(counter, 1) = cloud->points[i].y;
-    B[counter] = cloud->points[i].z;
-
+    A(counter, 2) = cloud->points[i].z;
+    current_point = Eigen::Vector3f(cloud->points[i].x, cloud->points[i].y, cloud->points[i].z);
+    B[counter] = current_point.norm(); // D
     centroid[0] += cloud->points[i].x;
     centroid[1] += cloud->points[i].y;
     centroid[2] += cloud->points[i].z;  
