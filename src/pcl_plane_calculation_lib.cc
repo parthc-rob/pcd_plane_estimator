@@ -158,7 +158,6 @@ Eigen::Vector4f PlaneSegment::getPlaneProposalLeastSquares(const pcl::PointCloud
   centroid /= points_to_fit.size();
   std::cout<<"\n centroid : [ "<<centroid[0]<<", "<<centroid[1]<<", "<<centroid[2]<<"] ";
   plane_in_world[3] = plane_abc[0]*centroid[0] + plane_abc[1]*centroid[1] + plane_abc[2]*centroid[2];
-  //plane_in_world[3] = plane_abc.dot(centroid);
     
   return plane_in_world; 
 }
@@ -205,25 +204,15 @@ Eigen::Vector4f PlaneSegment::getPlaneParametersRANSAC(const pcl::PointCloud<pcl
     std::cout<<"\n\n Proposed Plane : [ "<<plane_proposal[0]<<", "<<plane_proposal[1]
             <<", "<<plane_proposal[2]<<", "<<plane_proposal[3]<<"]  with error: "
             <<current_error<<std::endl;
-    //if (current_error < 0.1)
-    //  return plane_proposal;
 
     also_inliers.clear();
     for (int i = 0; i < cloud->points.size(); i++) {
       if (find(proposed_inliers.begin(), proposed_inliers.end(), i) == proposed_inliers.end()) {
-        //if (this->getPlaneError(plane_proposal, cloud, std::vector<int>(i)) < distance_threshold)
         if (this->pointToPlaneDistance(plane_proposal, cloud->points[i], cloud->points[proposed_inliers[0]]) < distance_threshold) {
           also_inliers.push_back(i);
         }
       }
     }
-    //if (current_error < best_error) {
-    //  best_plane_fit = plane_proposal;
-    //  std::cout<<"\n\n Best Plane yet: [ "<<plane_proposal[0]<<", "<<plane_proposal[1]
-    //        <<", "<<plane_proposal[2]<<", "<<plane_proposal[3]<<"] with error: "
-    //      <<current_error<<std::endl;
-    //  best_error = current_error;
-    //}
     std::cout<<" -- "<<also_inliers.size()<<" inliers added -- ";
 
     if (also_inliers.size() > sample_size_threshold) {
@@ -234,10 +223,6 @@ Eigen::Vector4f PlaneSegment::getPlaneParametersRANSAC(const pcl::PointCloud<pcl
       plane_proposal =  this->getPlaneProposalLeastSquares( cloud, proposed_inliers );
       current_error = this->getPlaneError( plane_proposal, cloud, proposed_inliers);
 
-      //if (current_error < 0.1)
-    //  return plane_proposal;
-      //if (current_error < best_error) {
-      //if (proposed_inliers.size() > max_inliers && ! isnan(current_error)) {
       if (! isnan(current_error)) {
         if (current_error < best_error ) {
           max_inliers = proposed_inliers.size();
@@ -256,7 +241,7 @@ Eigen::Vector4f PlaneSegment::getPlaneParametersRANSAC(const pcl::PointCloud<pcl
     }
     iteration++;
   }
-  std::cout<<"\n\n Output Plane : [ "<<best_plane_fit[0]<<", "<<best_plane_fit[1]
+  std::cout<<"\n\n RANSAC Output Plane : [ "<<best_plane_fit[0]<<", "<<best_plane_fit[1]
             <<", "<<best_plane_fit[2]<<", "<<best_plane_fit[3]<<"] with error: "
           <<this->getPlaneError( best_plane_fit, cloud, proposed_inliers)<< " on inliers : "<<proposed_inliers.size();
   return best_plane_fit; 
@@ -304,7 +289,7 @@ void PlaneSegment::viewCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
 
   std::cout<<"\n Displaying Plane + Cone\n";
   //std::cout<<"\n Cone size: "<< camera_coeff.values.size();
-  this->viewer = simpleVis(cloud, plane_coeff, camera_coeff);
+  //this->viewer = simpleVis(cloud, plane_coeff, camera_coeff);
 
   // // Display axis for camera + line for vector needing to appear upright
   // // use line for vector appearing upright to do axis-angle rotation with normal, create line + get axis at same position as camera cone
@@ -332,16 +317,14 @@ void PlaneSegment::viewCloud(const pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud) {
   q = aa*aa_yaw_on_plane;
   //this->viewer->addCoordinateSystem (1.0, m, "second");
 
-  this->viewer->addCube(-1.0*this->normal , q, 2*0.16, 2*0.1, 0.02, "camera_view");
-//pcl::visualization::createCube (const Eigen::Vector3f &translation, const Eigen::Quaternionf &rotation,
-//                                double width, double height, double depth)
+  //this->viewer->addCube(-1.0*this->normal , q, 2*0.16, 2*0.1, 0.02, "camera_view");
   //--------------------
   // -----Main loop-----
-  //--------------------
-  std::chrono::milliseconds ms{100};
-  while (!this->viewer->wasStopped ())
-  {
-    this->viewer->spinOnce (100);
-    std::this_thread::sleep_for(ms);
-  }
+  ////--------------------
+  //std::chrono::milliseconds ms{100};
+  //while (!this->viewer->wasStopped ())
+  //{
+  //  this->viewer->spinOnce (100);
+  //  std::this_thread::sleep_for(ms);
+  //}
 }

@@ -30,9 +30,9 @@ int main (int argc, char** argv)
     PCL_ERROR ("Couldn't read file test_pcd.pcd \n");
     return (-1);
   }
-  std::cout << "Loaded "
+  std::cout << "====================\nLoaded "
             << cloud->width * cloud->height
-            << " data points from test_pcd.pcd with the following fields: "
+            << " data points from "<<argv[1]<< "\n====================\n"
             << std::endl;
 
   PlaneSegment plane;
