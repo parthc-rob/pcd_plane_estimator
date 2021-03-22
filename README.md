@@ -22,3 +22,10 @@ To run -
 Note : Due to OpenGL incompatibility with docker, pcl_viewer won't run inside docker - no visualization for plane inside docker.
 
 For on-host plane visualization, optionally `git checkout test`, run `deps.sh` to install dependencies in host, `build_cpp.sh` to build package, then `calculate_plane.sh`.
+
+------------
+Sample output planes
+
+![learn11_plane.pcd](https://github.com/parthc-rob/pcd_plane_estimator/blob/no_visualize_with_docker/output_images/plane_estimate_learn11_plane.png?raw=true)
+
+![object_template2.pcd](https://github.com/parthc-rob/pcd_plane_estimator/blob/no_visualize_with_docker/output_images/object_template2_plane_detection.png?raw=true)
