@@ -9,8 +9,7 @@ ENV USERNAME user
 COPY ./settings /home/$USERNAME/
 RUN ls -a /home/$USERNAME/
 RUN bash /home/$USERNAME/install_user.sh
-RUN apt-get update
-RUN apt-get install -y ca-certificates apt-utils build-essential make
+RUN apt-get update && apt-get install -y ca-certificates apt-utils build-essential make
 
 # Install relevant dependencies
 RUN apt-get install -y libpcl-dev pcl-tools 
@@ -28,14 +27,20 @@ WORKDIR /code-sample
 RUN apt-get install -y libboost-all-dev \
     libxext-dev \
     libx11-dev \
-    gedit \
-    x11proto-gl-dev
-RUN apt install -y libnvidia-gl-455 mesa-utils libgtest-dev
+    x11proto-gl-dev \
+    mesa-utils \
+    libgl1-mesa-glx \
+    libgl1-mesa-dri \
+    libgtest-dev \
+    xvfb \
+    x11-utils
+    #libnvidia-common-455
+
 # Here you copy in your code
-COPY . .
+# COPY . .
 
 # Here you build your code
-RUN rm -rf ./build/ && ./build_cpp.sh && ./calculate_plane.sh 
+# RUN rm -rf ./build/ && ./build_cpp.sh && ./calculate_plane.sh
 
 #Entrypoint command
 COPY ./system_entrypoint.sh /

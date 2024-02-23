@@ -2,15 +2,31 @@
 
 if [ "$1" = "" ]
 then
-    HOST_DIR=/home/$USER/shared_dir/pcd_plane_estimator
+    HOST_DIR="$PWD"
 else
     HOST_DIR=$1
 fi
 
+while getopts 'g:' OPTION; do
+  case "$OPTION" in
+    g)
+      echo "Using GPUs (need to be NVIDIA)"
+      GPU="gpus=all"
+      ;;
+    ?)
+      echo "Using CPU only"
+      GPU=""
+      #echo "script usage: $(basename \$0) [-g]" >&1
+      #exit 1
+      ;;
+  esac
+done
+shift "$(($OPTIND -1))"
+
 dockerUserName="user"
 
+SHARED_DIR=/code-sample
 
-SHARED_DIR=/home/$dockerUserName/shared_dir/pcd_plane_estimator
 ##############
 XSOCK=/tmp/.X11-unix
 XAUTH=/tmp/.docker.xauth
@@ -25,10 +41,10 @@ docker run --rm -it \
         --env="UID=`id -u $who`" \
         --env="UID=`id -g $who`" \
         --device /dev/nvidia0 --device /dev/nvidiactl -e DISPLAY=$DISPLAY \
-        --gpus all \
+        $GPU \
         --privileged \
         --net=host\
         --volume=/dev:/dev \
-        user/pcl:test \
+        --volume=$HOST_DIR:$SHARED_DIR \
+        parthc/minimal_pcl_cpp_linux:develop \
         bash 
-#--volume=$HOST_DIR:$SHARED_DIR:rw \
